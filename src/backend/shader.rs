@@ -171,4 +171,14 @@ impl Shader {
             gl::Uniform3fv(mat_loc, 1, data.as_slice().as_ptr());
         }
     }
+
+    #[allow(non_snake_case)]
+    pub fn set_sampler2D<S: Into<&'static str>>(&self, name: S, data: u32) {
+        let data_name = CString::new(name.into()).unwrap();
+
+        unsafe {
+            let sampler = gl::GetUniformLocation(self.program, data_name.as_ptr());
+            gl::Uniform1i(sampler, data as _);
+        }
+    }
 }

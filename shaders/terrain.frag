@@ -5,17 +5,18 @@
 out vec4 color;
 
 in vec3 fragment_pos;
-in vec3 fragment_color;
 in vec3 surface_normal;
+in vec2 tex_coord;
+
+uniform vec3 light_color;
 
 uniform vec3 light_pos;
-uniform vec3 view_pos;
-uniform vec3 light_color;
+uniform sampler2D t_texture;
 
 void main()
 {
     // Ambient lighting
-    float ambient_strength = 0.1;
+    float ambient_strength = 0.5;
     vec3 ambient = ambient_strength * light_color;
 
     // diffuse 
@@ -23,14 +24,7 @@ void main()
     vec3 light_dir = normalize(light_pos - fragment_pos);
     float diff = max(dot(norm, light_dir), 0.0);
     vec3 diffuse = diff * light_color;
-    
-    // specular
-    float specular_strength = 0.5;
-    vec3 view_dir = normalize(view_pos - fragment_pos);
-    vec3 reflect_dir = reflect(-light_dir, norm);  
-    float spec = pow(max(dot(view_dir, reflect_dir), 0.0), 32);
-    vec3 specular = specular_strength * spec * light_color;  
         
-    vec3 result = (ambient + diffuse + specular) * fragment_color;
+    vec3 result = (ambient + diffuse) * texture(t_texture, tex_coord).xyz;
     color = vec4(result, 1.0f);
 }

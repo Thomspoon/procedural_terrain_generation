@@ -5,6 +5,7 @@ use backend::camera::{Camera, CameraMovement};
 use backend::object::Object;
 use backend::renderer::{Capabilities, ClearFlags, PolygonMode, Renderer};
 use backend::shader::Shader;
+use backend::texture::Texture;
 
 use drawables::Terrain;
 
@@ -32,10 +33,13 @@ fn main() {
     let renderer = Renderer::new(windowed_context);
     renderer.enable(Capabilities::DEPTH_TEST);
 
-    let light_shader = Shader::from_file("shaders/terrain.vert", "shaders/terrain.frag");
+    let terrain_shader = Shader::from_file("shaders/terrain.vert", "shaders/terrain.frag");
+
+
+    let (grass, grass_id) = Texture::new("textures/low_def_grass.jpg");
 
     // Create object
-    let point_grid = Object::new(Terrain, Vec3::new(0.0, 0.0, 0.0), None);
+    let point_grid = Object::new(Terrain, Vec3::new(0.0, 0.0, 0.0), Some(grass));
 
     let mut camera = Camera::new(
         Vec3::new(2.5, 8.0, 2.5),
@@ -100,7 +104,7 @@ fn main() {
 
         // Clear screen for drawing
         renderer.clear(Vec4::new(0.2, 0.3, 0.6, 0.5), ClearFlags::COLOR_DEPTH);
-
+        
         let projection = Mat4::perspective_rh_zo(
             f32::to_radians(camera.get_zoom()),
             (logical_size.width / logical_size.height) as _,
@@ -108,16 +112,16 @@ fn main() {
             1000.0,
         );
 
-        light_shader.use_program();
-        light_shader.set_mat4fv("view", &camera.get_view_matrix());
-        light_shader.set_mat4fv("projection", &projection);
-        light_shader.set_vec3f("light_color", &Vec3::new(1.0, 1.0, 1.0));
-        light_shader.set_vec3f("light_pos", &Vec3::new(2.5, 100.0, 2.5));
-        light_shader.set_vec3f("view_pos", camera.get_position());
+
+        terrain_shader.use_program();
+        terrain_shader.set_mat4fv("view", &camera.get_view_matrix());
+        terrain_shader.set_mat4fv("projection", &projection);        terrain_shader.set_sampler2D("texture", grass_id);
+        terrain_shader.set_vec3f("light_color", &Vec3::new(1.0, 1.0, 1.0));
+        terrain_shader.set_vec3f("light_pos", &Vec3::new(250.0, 100.0, 250.0));
 
         // Models
         let model = point_grid.get_transform();
-        light_shader.set_mat4fv("model", &model);
+        terrain_shader.set_mat4fv("model", &model);
         point_grid.draw();
 
         // Swap windows

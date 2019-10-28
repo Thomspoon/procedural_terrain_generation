@@ -2,7 +2,7 @@ use arrayvec::ArrayVec;
 
 use noise::{NoiseFn, Perlin};
 
-use vek::vec::Vec3;
+use vek::vec::{Vec3, Vec2};
 
 use std::mem;
 
@@ -17,13 +17,13 @@ const GRID_SIZE_MEM: usize = (GRID_SIZE * GRID_SIZE) as usize;
 #[derive(Debug)]
 struct Vertex {
     pos: Vec3<f32>,
-    color: Vec3<f32>,
     normal: Vec3<f32>,
+    texture_uv: Vec2<f32>
 }
 
 pub struct Terrain;
 
-pub const SEA_LEVEL: f32 = -0.4; 
+pub const SEA_LEVEL: f32 = -20.0; 
 
 impl Drawable for Terrain {
     fn vertex_attributes(&self) -> DrawableAttributes {
@@ -33,16 +33,28 @@ impl Drawable for Terrain {
         for x in 0..GRID_SIZE {
             for z in 0..GRID_SIZE {
                 let height = height.inner[x as usize][z as usize];
-                let color = if height > SEA_LEVEL {
-                    Vec3::new(0.137, 0.47, 0.22)
+                //let color = Vec3::new(0.137, 0.47, 0.22);
+
+                // let color = if height > SEA_LEVEL {
+                //     Vec3::new(0.137, 0.47, 0.22)
+                // } else {
+                //     Vec3::new(0.06, 0.28, 0.58)
+                // };
+
+                let texture_uv = if x % 2 == 1 && z % 2 == 1 {
+                    Vec2::new(0.0, 0.0)
+                } else if x % 2 == 1 && z % 2 == 0  {
+                    Vec2::new(0.0, 1.0)
+                } else if x % 2 == 0 && z % 2 == 1 {
+                    Vec2::new(1.0, 0.0)
                 } else {
-                    Vec3::new(0.06, 0.28, 0.58)
+                    Vec2::new(1.0, 1.0)
                 };
 
                 vertex_attributes.push(Vertex {
                     pos: Vec3::new(x as _, height as _, z as _),
-                    color,
                     normal: Vec3::new(0.0, -1.0, 0.0),
+                    texture_uv
                 });
             }
         }
@@ -328,38 +340,6 @@ impl Drawable for Terrain {
              }
         }
 
-        // Calculate surface normals
-        //
-        // Note: since we add bottom/top first, we have to carefully
-        // not disrupt right hand rule
-        // let mut surface_normals: Vec<f32> = Vec::with_capacity(ROW_SIZE);
-        // for index in (0..indices.len()).step_by(3) {
-        //     let a_index = indices[index];
-        //     let b_index = indices[index + 1];
-        //     let c_index = indices[index + 2];
-
-        //     let a = Vec3::new(vertices[a_index as usize], vertices[a_index as usize + 1], vertices[a_index as usize + 2]);
-        //     let b = Vec3::new(vertices[b_index as usize], vertices[b_index as usize + 1], vertices[b_index as usize + 2]);
-        //     let c = Vec3::new(vertices[c_index as usize], vertices[c_index as usize + 1], vertices[c_index as usize + 2]);
-
-        //     let normal = Vec3::cross(b - a, c - a);
-
-        //     surface_normals.push(normal[0]);
-        //     surface_normals.push(normal[1]);
-        //     surface_normals.push(normal[2]);
-        // }
-
-        // Combine vertices and surface normals
-        // let mut vertex_attributes: Vec<f32> = Vec::with_capacity(ROW_SIZE);
-        // for index in (0..vertices.len()).step_by(3) {
-        //     vertex_attributes.push(vertices[index as usize]);
-        //     vertex_attributes.push(vertices[index as usize + 1]);
-        //     vertex_attributes.push(vertices[index as usize + 2]);
-        //     vertex_attributes.push(surface_normals[index as usize]);
-        //     vertex_attributes.push(surface_normals[index as usize + 1]);
-        //     vertex_attributes.push(surface_normals[index as usize + 2]);
-        // }
-
         // Use ArrayVec until [f32; N] gets into_iterator
         let vertex_attributes = vertex_attributes
             .iter()
@@ -368,12 +348,11 @@ impl Drawable for Terrain {
                     vertex.pos[0],
                     vertex.pos[1],
                     vertex.pos[2],
-                    vertex.color[0],
-                    vertex.color[1],
-                    vertex.color[2],
                     vertex.normal[0],
                     vertex.normal[1],
                     vertex.normal[2],
+                    vertex.texture_uv[0],
+                    vertex.texture_uv[1]
                 ])
             })
             .flatten()
@@ -385,19 +364,19 @@ impl Drawable for Terrain {
             VertexAttribPointer {
                 index: 0,
                 size: 3,
-                stride: 9 * mem::size_of::<f32>(),
+                stride: 8 * mem::size_of::<f32>(),
                 offset: 0,
             },
             VertexAttribPointer {
                 index: 1,
                 size: 3,
-                stride: 9 * mem::size_of::<f32>(),
+                stride: 8 * mem::size_of::<f32>(),
                 offset: 3 * mem::size_of::<f32>() as usize,
             },
             VertexAttribPointer {
                 index: 2,
-                size: 3,
-                stride: 9 * mem::size_of::<f32>(),
+                size: 2,
+                stride: 8 * mem::size_of::<f32>(),
                 offset: 6 * mem::size_of::<f32>() as usize,
             },
         ];
@@ -426,14 +405,19 @@ impl RandomHeightGenerator {
 
         let perlin = Perlin::new();
 
-        let mut xoff = 0.0;
+        let frequency = 3.0;
+
+        // let mut xoff = 0.0;
         for x in 0..GRID_SIZE {
-            let mut zoff = 0.0;
+            // let mut zoff = 0.0;
             for z in 0..GRID_SIZE {
-                s.inner[x as usize][z as usize] = perlin.get([xoff, zoff]) as _; 
-                zoff += 0.2;
+                let nx = (x as f64 / GRID_SIZE as f64) - 0.5;
+                let ny = (z as f64 / GRID_SIZE as f64) - 0.5;
+
+                s.inner[x as usize][z as usize] = (perlin.get([frequency * nx, frequency *ny]) 
+                                          + 0.5  * perlin.get([frequency * 2.0 * nx, frequency * 2.0 * ny])
+                                          + 0.25 * perlin.get([frequency * 4.0 * nx, frequency * 4.0 * ny])) as f32 * 25.0;
             }
-            xoff += 0.2;
         }
 
         s
