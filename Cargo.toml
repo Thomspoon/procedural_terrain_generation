@@ -1,0 +1,18 @@
+[package]
+name = "procedural_generation"
+version = "0.1.0"
+authors = ["thomspoon"]
+edition = "2018"
+build = "build.rs"
+
+[dependencies]
+arrayvec = "^0.5"
+bitflags = "^1.2"
+glutin = "0.21.1"
+image = "^0.22"
+noise = "0.6.0"
+vek = "^0.9"
+
+
+[build-dependencies]
+gl_generator = "^0.13"
