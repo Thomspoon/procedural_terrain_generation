@@ -33,28 +33,11 @@ impl Drawable for Terrain {
         for x in 0..GRID_SIZE {
             for z in 0..GRID_SIZE {
                 let height = height.inner[x as usize][z as usize];
-                //let color = Vec3::new(0.137, 0.47, 0.22);
-
-                // let color = if height > SEA_LEVEL {
-                //     Vec3::new(0.137, 0.47, 0.22)
-                // } else {
-                //     Vec3::new(0.06, 0.28, 0.58)
-                // };
-
-                let texture_uv = if x % 2 == 1 && z % 2 == 1 {
-                    Vec2::new(0.0, 0.0)
-                } else if x % 2 == 1 && z % 2 == 0  {
-                    Vec2::new(0.0, 1.0)
-                } else if x % 2 == 0 && z % 2 == 1 {
-                    Vec2::new(1.0, 0.0)
-                } else {
-                    Vec2::new(1.0, 1.0)
-                };
 
                 vertex_attributes.push(Vertex {
                     pos: Vec3::new(x as _, height as _, z as _),
                     normal: Vec3::new(0.0, -1.0, 0.0),
-                    texture_uv
+                    texture_uv: Vec2::new(x as _, z as _)
                 });
             }
         }
