@@ -105,7 +105,7 @@ impl Object {
     }
 
     pub fn transform(&mut self, transform_type: TransformType) {
-        let mut transform = &mut self.transform;
+        let transform = &mut self.transform;
 
         match transform_type {
             TransformType::Translate(t) => {

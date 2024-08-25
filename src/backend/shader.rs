@@ -42,7 +42,7 @@ impl Shader {
         let mut vertex_shader = String::new();
         buf_reader
             .read_to_string(&mut vertex_shader)
-            .expect("Could not read vertex path");;
+            .expect("Could not read vertex path");
 
         let mut buf_reader = BufReader::new(fragment_glsl);
         let mut fragment_shader = String::new();

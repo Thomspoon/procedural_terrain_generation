@@ -57,7 +57,7 @@ impl Drawable for Terrain {
             }
         }
 
-        fn calculate_normal(vertex_attributes: &Vec<Vertex>, indices: ArrayVec<[u32; 18]>, num_triangles: usize) -> Vec3<f32> {
+        fn calculate_normal(vertex_attributes: &Vec<Vertex>, indices: ArrayVec<u32, 18>, num_triangles: usize) -> Vec3<f32> {
             let mut normal = Vec3::new(0.0, 0.0, 0.0);
             for triangle in 0..num_triangles {
                 let vertex_attribute_index = triangle * 3usize;
@@ -69,7 +69,7 @@ impl Drawable for Terrain {
             }
 
             (normal / num_triangles as f32).normalized()
-        };
+        }
 
         // Calculate normals -- refactor into better means
         // NOTE: Normals are calculated by a top-down birds-eye view of the grid
@@ -79,14 +79,14 @@ impl Drawable for Terrain {
             for z in 0..GRID_SIZE {
                 if x == 0 && z == 0 {
                     // Origin
-                    let mut triangle_indices = ArrayVec::<[u32; 18]>::new();
+                    let mut triangle_indices = ArrayVec::<u32, 18>::new();
                     triangle_indices.push(0);
                     triangle_indices.push(1);
                     triangle_indices.push(GRID_SIZE);
                     vertex_attributes[va_index].normal = calculate_normal(&vertex_attributes, triangle_indices, 1);
                 } else if x == GRID_SIZE - 1 && z == 0 {
                     // Top Left
-                    let mut triangle_indices = ArrayVec::<[u32; 18]>::new();
+                    let mut triangle_indices = ArrayVec::<u32, 18>::new();
                     //      right triangle
                     triangle_indices.push(GRID_SIZE);
                     triangle_indices.push(GRID_SIZE * x + 1);
@@ -101,7 +101,7 @@ impl Drawable for Terrain {
 
                 } else if x == GRID_SIZE - 1 && z == GRID_SIZE - 1 {
                     // Top Right
-                    let mut triangle_indices = ArrayVec::<[u32; 18]>::new();
+                    let mut triangle_indices = ArrayVec::<u32, 18>::new();
                     triangle_indices.push(GRID_SIZE * GRID_SIZE - 1);
                     triangle_indices.push(GRID_SIZE * GRID_SIZE - 2);
                     triangle_indices.push(GRID_SIZE * GRID_SIZE - 1 - GRID_SIZE);
@@ -110,7 +110,7 @@ impl Drawable for Terrain {
 
                 } else if x == 0 && z == GRID_SIZE - 1 {
                     // Bottom Right
-                    let mut triangle_indices = ArrayVec::<[u32; 18]>::new();
+                    let mut triangle_indices = ArrayVec::<u32, 18>::new();
                     //      right triangle
                     triangle_indices.push(GRID_SIZE - 1);
                     triangle_indices.push(GRID_SIZE - 1 + GRID_SIZE);
@@ -125,7 +125,7 @@ impl Drawable for Terrain {
 
                 } else if x == 0 && z > 0 && z < GRID_SIZE - 1 {
                     // Along x == 0 axis when Z is zero and Z is not GRID_SIZE
-                    let mut triangle_indices = ArrayVec::<[u32; 18]>::new();
+                    let mut triangle_indices = ArrayVec::<u32, 18>::new();
                     //      Left
                     triangle_indices.push(z);
                     triangle_indices.push(z + GRID_SIZE - 1);
@@ -144,7 +144,7 @@ impl Drawable for Terrain {
                 
                 } else if x == GRID_SIZE - 1 && z > 0 && z < GRID_SIZE - 1 {
                     // Along x == GRID_SIZE - 1 axis when Z is GRID_SIZE and Z is not GRID_SIZE
-                    let mut triangle_indices = ArrayVec::<[u32; 18]>::new();
+                    let mut triangle_indices = ArrayVec::<u32, 18>::new();
                     //      Left
                     triangle_indices.push((x * GRID_SIZE) + z);
                     triangle_indices.push((x * GRID_SIZE) + z - 1);
@@ -164,7 +164,7 @@ impl Drawable for Terrain {
                     // Along Z axis when X is zero and X is not GRID_SIZE - 1
                     if z % 2 != 0 {
                         // Odd indices have four triangles
-                        let mut triangle_indices = ArrayVec::<[u32; 18]>::new();
+                        let mut triangle_indices = ArrayVec::<u32, 18>::new();
                         
                         // Triangle 1 (top)
                         triangle_indices.push(x * GRID_SIZE);
@@ -189,7 +189,7 @@ impl Drawable for Terrain {
 
                     } else {
                         // Even indices have two triangles
-                        let mut triangle_indices = ArrayVec::<[u32; 18]>::new();
+                        let mut triangle_indices = ArrayVec::<u32, 18>::new();
                         
                         // Triangle 1 (top)
                         triangle_indices.push((x * GRID_SIZE) + z);
@@ -206,7 +206,7 @@ impl Drawable for Terrain {
                     // Along Z == GRID_SIZE - 1 axis when X is zero and X is not GRID_SIZE - 1
                     if x % 2 == 0 {
                         // Odd indices have four triangles
-                        let mut triangle_indices = ArrayVec::<[u32; 18]>::new();
+                        let mut triangle_indices = ArrayVec::<u32, 18>::new();
                         
                         // Triangle 1 (top)
                         triangle_indices.push(x * (GRID_SIZE - 1));
@@ -231,7 +231,7 @@ impl Drawable for Terrain {
 
                     } else {
                         // Even indices have two triangles
-                        let mut triangle_indices = ArrayVec::<[u32; 18]>::new();
+                        let mut triangle_indices = ArrayVec::<u32, 18>::new();
                         
                         // Triangle 1 (top)
                         triangle_indices.push(x * (GRID_SIZE - 1));
@@ -248,7 +248,7 @@ impl Drawable for Terrain {
                     // Middle of grid
                     if x % 2 != 0 {
                         // Even indices have two triangles
-                        let mut triangle_indices = ArrayVec::<[u32; 18]>::new();
+                        let mut triangle_indices = ArrayVec::<u32, 18>::new();
                         
                         // Triangle 1 (top left)
                         triangle_indices.push(x * (GRID_SIZE) + z);
@@ -283,7 +283,7 @@ impl Drawable for Terrain {
                         vertex_attributes[va_index].normal = calculate_normal(&vertex_attributes, triangle_indices, 6);
                     } else {
                         // Even indices have two triangles
-                        let mut triangle_indices = ArrayVec::<[u32; 18]>::new();
+                        let mut triangle_indices = ArrayVec::<u32, 18>::new();
 
                         // Triangle 1 (left top)
                         triangle_indices.push(x * (GRID_SIZE) + z);

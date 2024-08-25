@@ -1,5 +1,4 @@
-#![allow(dead_code)]
-
+#![allow(dead_code, unused_imports)]
 pub mod camera;
 pub mod drawable;
 mod gl_gen;

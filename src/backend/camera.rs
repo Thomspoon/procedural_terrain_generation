@@ -34,7 +34,7 @@ impl Default for Camera {
             pitch: 0.0,
             speed: 102.5,
             sensitivity: 0.1,
-            zoom: 45.0,
+            zoom: 90.0,
 
             inverted_yaw: true,
 

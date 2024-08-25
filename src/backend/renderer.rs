@@ -1,8 +1,11 @@
 use bitflags::bitflags;
+use glutin::prelude::*;
+use glutin::context::PossiblyCurrentContext;
+use glutin::surface::Surface;
 
+use std::ffi::CString;
+use std::num::NonZeroU32;
 use vek::vec::Vec4;
-
-use glutin::{NotCurrent, PossiblyCurrent, WindowedContext};
 
 use crate::backend::gl_gen::gl;
 
@@ -31,16 +34,23 @@ bitflags! {
     }
 }
 
-pub struct Renderer(WindowedContext<PossiblyCurrent>);
+pub struct Renderer {
+    context: PossiblyCurrentContext,
+    surface: Surface<glutin::surface::WindowSurface>,
+}
 
 #[allow(dead_code)]
 impl Renderer {
-    pub fn new(windowed_context: WindowedContext<NotCurrent>) -> Self {
-        let window = unsafe { windowed_context.make_current().unwrap() };
-
-        gl::load_with(|ptr| window.get_proc_address(ptr) as *const _);
-
-        Self(window)
+    pub fn new<D: GlDisplay>(
+        context: PossiblyCurrentContext,
+        surface: Surface<glutin::surface::WindowSurface>,
+        gl_display: &D,
+    ) -> Self {
+        let _ = gl::load_with(|symbol| {
+            let symbol = CString::new(symbol).unwrap();
+            gl_display.get_proc_address(symbol.as_c_str()).cast()
+        });
+        Self { context, surface }
     }
 
     pub fn enable(&self, capabilities: Capabilities) {
@@ -61,10 +71,11 @@ impl Renderer {
         }
     }
 
-    pub fn resize(&self, size: glutin::dpi::LogicalSize) {
-        self.0.window().set_inner_size(size);
+    pub fn resize(&self, width: NonZeroU32, height: NonZeroU32) {
+        self.surface
+            .resize(&self.context, width, height);
         unsafe {
-            gl::Viewport(0, 0, size.width as _, size.height as _);
+            gl::Viewport(0, 0, width.get() as _, height.get() as _);
         }
     }
 
@@ -80,10 +91,8 @@ impl Renderer {
     }
 
     pub fn swap_buffers(&self) {
-        self.0.swap_buffers().expect("Unable to swap buffers");
-    }
-
-    pub fn window(&self) -> &WindowedContext<PossiblyCurrent> {
-        &self.0
+        self.surface
+            .swap_buffers(&self.context)
+            .expect("Unable to swap buffers");
     }
 }
