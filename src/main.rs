@@ -18,28 +18,129 @@ use glutin::{
     surface::{SurfaceAttributesBuilder, WindowSurface},
 };
 use glutin_winit::DisplayBuilder;
-use raw_window_handle::HasRawWindowHandle;
-use winit::event::DeviceEvent;
+use raw_window_handle::HasWindowHandle;
+use winit::application::ApplicationHandler;
+use winit::event::{DeviceEvent, DeviceId, KeyEvent, WindowEvent};
 use winit::{
     dpi::LogicalSize,
-    event::{ElementState, Event, KeyEvent, WindowEvent},
-    event_loop::EventLoop,
+    event::ElementState,
+    event_loop::{ActiveEventLoop, EventLoop},
     keyboard::{Key, NamedKey},
-    window::WindowBuilder,
+    window::{Window, WindowAttributes, WindowId},
 };
 use std::num::NonZeroU32;
+use std::time::Instant;
 use vek::mat::*;
 use vek::vec::*;
+
+struct App {
+    window: Window,
+    renderer: Renderer,
+    terrain_shader: Shader,
+    point_grid: Object,
+    camera: Camera,
+    grass_id: u32,
+    last_frame: Instant,
+}
+
+impl App {
+    fn delta(&mut self) -> f32 {
+        let now = Instant::now();
+        let dt = now.duration_since(self.last_frame).as_secs_f32();
+        self.last_frame = now;
+        dt
+    }
+
+    fn render(&mut self) {
+        let Self { window, renderer, terrain_shader, point_grid, camera, .. } = self;
+
+        renderer.clear(Vec4::new(0.2, 0.3, 0.6, 0.5), ClearFlags::COLOR_DEPTH);
+
+        let projection = Mat4::perspective_rh_zo(
+            f32::to_radians(camera.get_zoom()),
+            window.inner_size().width as f32 / window.inner_size().height as f32,
+            0.1,
+            1000.0,
+        );
+
+        terrain_shader.use_program();
+        terrain_shader.set_mat4fv("view", &camera.get_view_matrix());
+        terrain_shader.set_mat4fv("projection", &projection);
+        terrain_shader.set_sampler2D("texture", self.grass_id);
+        terrain_shader.set_vec3f("light_color", &Vec3::new(1.0, 1.0, 1.0));
+        terrain_shader.set_vec3f("light_pos", &Vec3::new(250.0, 100.0, 250.0));
+
+        let model = point_grid.get_transform();
+        terrain_shader.set_mat4fv("model", &model);
+        point_grid.draw();
+
+        renderer.swap_buffers();
+    }
+}
+
+impl ApplicationHandler for App {
+    fn resumed(&mut self, _event_loop: &ActiveEventLoop) {}
+
+    fn window_event(&mut self, event_loop: &ActiveEventLoop, _window_id: WindowId, event: WindowEvent) {
+        let dt = self.delta();
+
+        match event {
+            WindowEvent::Resized(size) => {
+                let width = NonZeroU32::new(size.width).unwrap();
+                let height = NonZeroU32::new(size.height).unwrap();
+                self.renderer.resize(width, height);
+            }
+            WindowEvent::CloseRequested => {
+                println!("closing!!");
+                event_loop.exit();
+            }
+            WindowEvent::KeyboardInput {
+                event: KeyEvent { logical_key: key, state: ElementState::Pressed, .. },
+                ..
+            } => match key.as_ref() {
+                Key::Named(NamedKey::Escape) => event_loop.exit(),
+                Key::Character("w") => {
+                    self.camera.process_keyboard_inputs(CameraMovement::FORWARD, dt);
+                }
+                Key::Character("a") => {
+                    self.camera.process_keyboard_inputs(CameraMovement::LEFT, dt);
+                }
+                Key::Character("s") => {
+                    self.camera.process_keyboard_inputs(CameraMovement::BACKWARD, dt);
+                }
+                Key::Character("d") => {
+                    self.camera.process_keyboard_inputs(CameraMovement::RIGHT, dt);
+                }
+                Key::Character("q") => {
+                    self.renderer.polygon_mode(PolygonMode::FILL);
+                }
+                Key::Character("e") => {
+                    self.renderer.polygon_mode(PolygonMode::LINE);
+                }
+                _ => {}
+            },
+            _ => {}
+        }
+
+        self.render();
+    }
+
+    fn device_event(&mut self, _event_loop: &ActiveEventLoop, _device_id: DeviceId, event: DeviceEvent) {
+        if let DeviceEvent::MouseMotion { delta } = event {
+            self.camera.process_mouse_inputs(delta.0 as _, delta.1 as _);
+        }
+    }
+}
 
 fn main() {
     let event_loop = EventLoop::new().unwrap();
 
-    let window_builder = WindowBuilder::new()
+    let window_attributes = WindowAttributes::default()
         .with_title("Procedural Generation")
         .with_inner_size(LogicalSize::new(1024.0, 768.0));
 
     let template = ConfigTemplateBuilder::new();
-    let display_builder = DisplayBuilder::new().with_window_builder(Some(window_builder));
+    let display_builder = DisplayBuilder::new().with_window_attributes(Some(window_attributes));
 
     let (window, config) = display_builder
         .build(&event_loop, template, |configs| configs.reduce(|accum, config| {
@@ -52,21 +153,21 @@ fn main() {
         .unwrap();
 
     let window = window.unwrap();
-
     let display = config.display();
+    let raw_handle = window.window_handle().unwrap().as_raw();
 
     let context_attributes = ContextAttributesBuilder::new()
         .with_profile(GlProfile::Core)
         .with_context_api(ContextApi::OpenGl(Some(Version::new(4, 5))))
-        .build(Some(window.raw_window_handle()));
+        .build(Some(raw_handle));
 
     let fallback_context_attributes = ContextAttributesBuilder::new()
         .with_context_api(ContextApi::Gles(None))
-        .build(Some(window.raw_window_handle()));
+        .build(Some(raw_handle));
 
     let legacy_context_attributes = ContextAttributesBuilder::new()
         .with_context_api(ContextApi::OpenGl(Some(Version::new(2, 1))))
-        .build(Some(window.raw_window_handle()));
+        .build(Some(raw_handle));
 
     let not_current_gl_context = unsafe {
         display.create_context(&config, &context_attributes)
@@ -76,7 +177,7 @@ fn main() {
     };
 
     let attrs = SurfaceAttributesBuilder::<WindowSurface>::new().build(
-        window.raw_window_handle(),
+        raw_handle,
         NonZeroU32::new(window.inner_size().width).unwrap(),
         NonZeroU32::new(window.inner_size().height).unwrap(),
     );
@@ -96,7 +197,7 @@ fn main() {
 
     let point_grid = Object::new(Terrain, Vec3::new(0.0, 0.0, 0.0), Some(grass));
 
-    let mut camera = Camera::new(
+    let camera = Camera::new(
         Vec3::new(2.5, 8.0, 2.5),
         Vec3::new(0.0, 1.0, 0.0),
         0.0,
@@ -104,83 +205,15 @@ fn main() {
         true,
     );
 
-    let mut last_frame = std::time::Instant::now();
-    let mut delta_frame = 0f32;
+    let mut app = App {
+        window,
+        renderer,
+        terrain_shader,
+        point_grid,
+        grass_id,
+        camera,
+        last_frame: Instant::now(),
+    };
 
-    event_loop.run(move |event, event_loop| {
-        let now = std::time::Instant::now();
-        delta_frame = now.duration_since(last_frame).as_secs_f32();
-        last_frame = now;
-
-        match event {
-            Event::WindowEvent { event, .. } => match event {
-                WindowEvent::Resized(size) => {
-                    let width = NonZeroU32::new(size.width).unwrap();
-                    let height = NonZeroU32::new(size.height).unwrap();
-                    renderer.resize(width, height);
-                }
-                WindowEvent::CloseRequested => {
-                    println!("closing!!");
-                    event_loop.exit()
-                }
-                WindowEvent::KeyboardInput {
-                    event: KeyEvent { logical_key: key, state: ElementState::Pressed, .. },
-                    ..
-                } => match key.as_ref() {
-                        Key::Named(NamedKey::Escape) => {
-                            event_loop.exit()
-                        }
-                        Key::Character("w") => {
-                            camera.process_keyboard_inputs(CameraMovement::FORWARD, delta_frame);
-                        }
-                        Key::Character("a") => {
-                            camera.process_keyboard_inputs(CameraMovement::LEFT, delta_frame);
-                        }
-                        Key::Character("s") => {
-                            camera.process_keyboard_inputs(CameraMovement::BACKWARD, delta_frame);
-                        }
-                        Key::Character("d") => {
-                            camera.process_keyboard_inputs(CameraMovement::RIGHT, delta_frame);
-                        }
-                        Key::Character("q") => {
-                            renderer.polygon_mode(PolygonMode::FILL);
-                        }
-                        Key::Character("e") => {
-                            renderer.polygon_mode(PolygonMode::LINE);
-                        }
-                        _ => {}
-                }
-
-                _ => {}
-            },
-            Event::DeviceEvent { event, .. } => {
-                if let DeviceEvent::MouseMotion { delta } = event {
-                    camera.process_mouse_inputs(delta.0 as _, delta.1 as _);
-                }
-            }
-            _ => {}
-        }
-
-        renderer.clear(Vec4::new(0.2, 0.3, 0.6, 0.5), ClearFlags::COLOR_DEPTH);
-
-        let projection = Mat4::perspective_rh_zo(
-            f32::to_radians(camera.get_zoom()),
-            window.inner_size().width as f32 / window.inner_size().height as f32,
-            0.1,
-            1000.0,
-        );
-
-        terrain_shader.use_program();
-        terrain_shader.set_mat4fv("view", &camera.get_view_matrix());
-        terrain_shader.set_mat4fv("projection", &projection);
-        terrain_shader.set_sampler2D("texture", grass_id);
-        terrain_shader.set_vec3f("light_color", &Vec3::new(1.0, 1.0, 1.0));
-        terrain_shader.set_vec3f("light_pos", &Vec3::new(250.0, 100.0, 250.0));
-
-        let model = point_grid.get_transform();
-        terrain_shader.set_mat4fv("model", &model);
-        point_grid.draw();
-
-        renderer.swap_buffers();
-    }).unwrap();
+    event_loop.run_app(&mut app).unwrap();
 }

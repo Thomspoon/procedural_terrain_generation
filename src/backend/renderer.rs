@@ -10,14 +10,16 @@ use vek::vec::Vec4;
 use crate::backend::gl_gen::gl;
 
 bitflags! {
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub struct ClearFlags: u32 {
         const COLOR = gl::COLOR_BUFFER_BIT;
         const DEPTH = gl::DEPTH_BUFFER_BIT;
-        const COLOR_DEPTH = Self::COLOR.bits | Self::DEPTH.bits;
+        const COLOR_DEPTH = gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT;
     }
 }
 
 bitflags! {
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub struct PolygonMode: u32 {
         const LINE = gl::LINE;
         const FILL = gl::FILL;
@@ -25,6 +27,7 @@ bitflags! {
 }
 
 bitflags! {
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub struct Capabilities: u32 {
         const BLEND = gl::BLEND;
         const CULL_FACE = gl::CULL_FACE;
@@ -82,7 +85,7 @@ impl Renderer {
     pub fn clear(&self, color: Vec4<f32>, flags: ClearFlags) {
         unsafe {
             gl::ClearColor(color[0], color[1], color[2], color[3]);
-            gl::Clear(flags.bits as _);
+            gl::Clear(flags.bits() as _);
         }
     }
 

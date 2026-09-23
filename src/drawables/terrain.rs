@@ -65,7 +65,7 @@ impl Drawable for Terrain {
                 let vb = vertex_attributes[(indices[vertex_attribute_index + 1]) as usize].pos;
                 let vc = vertex_attributes[(indices[vertex_attribute_index + 2]) as usize].pos;
 
-                normal += Vec3::cross(vb - va, vc - va);
+                normal += (vb - va).cross(vc - va);
             }
 
             (normal / num_triangles as f32).normalized()
@@ -386,7 +386,7 @@ impl RandomHeightGenerator {
             inner: [[0f32; GRID_SIZE as _]; GRID_SIZE as _]
         };
 
-        let perlin = Perlin::new();
+        let perlin = Perlin::new(42);
 
         let frequency = 3.0;
 

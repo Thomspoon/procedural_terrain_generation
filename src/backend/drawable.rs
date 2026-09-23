@@ -6,6 +6,7 @@ use crate::backend::gl_gen::gl;
 use crate::backend::gl_gen::gl::types::*;
 
 bitflags! {
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub struct DrawType: u32 {
         const BUFFERED = gl::ARRAY_BUFFER;
         const INDEXED = gl::ELEMENT_ARRAY_BUFFER;
@@ -13,6 +14,7 @@ bitflags! {
 }
 
 bitflags! {
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub struct DrawPrimitive: u32 {
         const POINTS = gl::POINTS;
         const LINES = gl::LINES;

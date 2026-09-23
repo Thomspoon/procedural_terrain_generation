@@ -13,7 +13,7 @@ impl Texture {
         let image =
             image::open(&path).unwrap_or_else(|_| panic!("Unable to open file: {:?}", path));
 
-        let data = image.raw_pixels();
+        let data = image.to_rgba8().into_raw();
 
         let mut texture_id = 0;
         unsafe {
