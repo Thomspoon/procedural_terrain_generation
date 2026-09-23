@@ -153,6 +153,9 @@ fn main() {
         .unwrap();
 
     let window = window.unwrap();
+    window.set_cursor_grab(winit::window::CursorGrabMode::Locked).unwrap();
+    window.set_cursor_visible(false);
+
     let display = config.display();
     let raw_handle = window.window_handle().unwrap().as_raw();
 
